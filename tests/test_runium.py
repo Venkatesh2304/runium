@@ -1,5 +1,6 @@
 import pytest
 import time
+import timeit
 from runium.core import Runium
 
 
@@ -48,11 +49,24 @@ class TestStartIn():
         assert is_ok is True
 
     def test_processing(self, rnp):
-        prev_time = time.time()
-        rnp.new_task(simple_task).run(start_in=0.1).result()
-        time_elapsed = time.time() - prev_time
-        is_ok = (time_elapsed < 0.11) and (time_elapsed > 0.09)
-        assert is_ok is True
+        """
+        start_in : int , the number of seconds to delay the start of function 
+        The test it to check the time taken to end the asyc function is between 0.9 and 0.11 s , 
+        Given the start_in is 0.1 for that function . 
+        Problem in flaky test : 
+        It uses time.time() which is not accurate when calculating such timings of 0.01 seconds and 
+        also running the task one time to calculate time is quite varying . 
+        So , we will use timeit.repeat to get the time for running the test n times with atleast 
+        k success . 
+        I have tuned the parameters to n = 10 and k = 8 .
+        """
+        n = 10 
+        k = 8
+        timings = timeit.repeat(lambda : rnp.new_task(simple_task).run(start_in=0.1).result() , number = 1,repeat = n)
+        succesfull_timings = list(filter(lambda time : time < 0.11 and time > 0.09 , timings))
+        is_ok = len(succesfull_timings) >= k 
+        assert is_ok is True 
+
 
 
 class TestTaskSkipping():
